@@ -5,250 +5,6 @@
 #include <random>
 #include <cassert>
 
-template <class Real, unsigned int VecLen> inline void Transpose(sctl::Vec<Real,VecLen> (&v)[VecLen]) noexcept { // generic
-  Real v_[VecLen][VecLen];
-  for (unsigned int i = 0; i < VecLen; i++) {
-    for (unsigned int j = 0; j < VecLen; j++) {
-      v_[i][j] = v[i].get().v[j];
-    }
-  }
-  for (unsigned int i = 0; i < VecLen; i++) {
-    for (unsigned int j = 0; j < VecLen; j++) {
-      v[i].get().v[j] = v_[j][i];
-    }
-  }
-}
-
-#ifdef __SSE4_2__
-template <> inline void Transpose<double,2>(sctl::Vec<double,2> (&v)[2]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-
-  __m128d t0 = _mm_unpacklo_pd(r0, r1);
-  __m128d t1 = _mm_unpackhi_pd(r0, r1);
-
-  r0 = t0;
-  r1 = t1;
-}
-
-template <> inline void Transpose<float,4>(sctl::Vec<float,4> (&v)[4]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-  auto& r2 = v[2].get().v;
-  auto& r3 = v[3].get().v;
-
-  __m128 a0 = _mm_unpacklo_ps(r0, r1);
-  __m128 a1 = _mm_unpackhi_ps(r0, r1);
-  __m128 b0 = _mm_unpacklo_ps(r2, r3);
-  __m128 b1 = _mm_unpackhi_ps(r2, r3);
-
-  r0 = _mm_movelh_ps(a0, b0);
-  r1 = _mm_movehl_ps(b0, a0);
-  r2 = _mm_movelh_ps(a1, b1);
-  r3 = _mm_movehl_ps(b1, a1);
-}
-#endif
-
-#ifdef __AVX__
-template <> inline void Transpose<double,4>(sctl::Vec<double,4> (&v)[4]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-  auto& r2 = v[2].get().v;
-  auto& r3 = v[3].get().v;
-
-  __m256d t0 = _mm256_shuffle_pd(r0, r1, 0x0);
-  __m256d t2 = _mm256_shuffle_pd(r0, r1, 0xF);
-  __m256d t1 = _mm256_shuffle_pd(r2, r3, 0x0);
-  __m256d t3 = _mm256_shuffle_pd(r2, r3, 0xF);
-
-  r0 = _mm256_permute2f128_pd(t0, t1, 0x20);
-  r1 = _mm256_permute2f128_pd(t2, t3, 0x20);
-  r2 = _mm256_permute2f128_pd(t0, t1, 0x31);
-  r3 = _mm256_permute2f128_pd(t2, t3, 0x31);
-}
-
-template <> inline void Transpose<float,8>(sctl::Vec<float,8> (&v)[8]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-  auto& r2 = v[2].get().v;
-  auto& r3 = v[3].get().v;
-  auto& r4 = v[4].get().v;
-  auto& r5 = v[5].get().v;
-  auto& r6 = v[6].get().v;
-  auto& r7 = v[7].get().v;
-
-  const __m256 a0 = _mm256_unpacklo_ps(r0, r1);
-  const __m256 a1 = _mm256_unpackhi_ps(r0, r1);
-  const __m256 a2 = _mm256_unpacklo_ps(r2, r3);
-  const __m256 a3 = _mm256_unpackhi_ps(r2, r3);
-  const __m256 a4 = _mm256_unpacklo_ps(r4, r5);
-  const __m256 a5 = _mm256_unpackhi_ps(r4, r5);
-  const __m256 a6 = _mm256_unpacklo_ps(r6, r7);
-  const __m256 a7 = _mm256_unpackhi_ps(r6, r7);
-
-  const __m256 t0 = _mm256_shuffle_ps(a0, a2, _MM_SHUFFLE(1,0,1,0));
-  const __m256 t1 = _mm256_shuffle_ps(a0, a2, _MM_SHUFFLE(3,2,3,2));
-  const __m256 t2 = _mm256_shuffle_ps(a1, a3, _MM_SHUFFLE(1,0,1,0));
-  const __m256 t3 = _mm256_shuffle_ps(a1, a3, _MM_SHUFFLE(3,2,3,2));
-  const __m256 t4 = _mm256_shuffle_ps(a4, a6, _MM_SHUFFLE(1,0,1,0));
-  const __m256 t5 = _mm256_shuffle_ps(a4, a6, _MM_SHUFFLE(3,2,3,2));
-  const __m256 t6 = _mm256_shuffle_ps(a5, a7, _MM_SHUFFLE(1,0,1,0));
-  const __m256 t7 = _mm256_shuffle_ps(a5, a7, _MM_SHUFFLE(3,2,3,2));
-
-  r0 = _mm256_permute2f128_ps(t0, t4, 0x20);
-  r1 = _mm256_permute2f128_ps(t1, t5, 0x20);
-  r2 = _mm256_permute2f128_ps(t2, t6, 0x20);
-  r3 = _mm256_permute2f128_ps(t3, t7, 0x20);
-  r4 = _mm256_permute2f128_ps(t0, t4, 0x31);
-  r5 = _mm256_permute2f128_ps(t1, t5, 0x31);
-  r6 = _mm256_permute2f128_ps(t2, t6, 0x31);
-  r7 = _mm256_permute2f128_ps(t3, t7, 0x31);
-}
-#endif
-
-#ifdef __AVX512F__
-template <> inline void Transpose<double,8>(sctl::Vec<double,8> (&v)[8]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-  auto& r2 = v[2].get().v;
-  auto& r3 = v[3].get().v;
-  auto& r4 = v[4].get().v;
-  auto& r5 = v[5].get().v;
-  auto& r6 = v[6].get().v;
-  auto& r7 = v[7].get().v;
-
-  // 1) Unpack within 64-bit lanes (build 2x2 blocks)
-  __m512d t0 = _mm512_unpacklo_pd(r0, r1);
-  __m512d t1 = _mm512_unpackhi_pd(r0, r1);
-  __m512d t2 = _mm512_unpacklo_pd(r2, r3);
-  __m512d t3 = _mm512_unpackhi_pd(r2, r3);
-  __m512d t4 = _mm512_unpacklo_pd(r4, r5);
-  __m512d t5 = _mm512_unpackhi_pd(r4, r5);
-  __m512d t6 = _mm512_unpacklo_pd(r6, r7);
-  __m512d t7 = _mm512_unpackhi_pd(r6, r7);
-
-  // 2) Shuffle 128-bit lanes to form 4x4 blocks
-  // imm8=0x88 selects low 128-bit lanes; imm8=0xDD selects high 128-bit lanes
-  __m512d s0 = _mm512_shuffle_f64x2(t0, t2, 0x88);
-  __m512d s1 = _mm512_shuffle_f64x2(t1, t3, 0x88);
-  __m512d s2 = _mm512_shuffle_f64x2(t0, t2, 0xDD);
-  __m512d s3 = _mm512_shuffle_f64x2(t1, t3, 0xDD);
-  __m512d s4 = _mm512_shuffle_f64x2(t4, t6, 0x88);
-  __m512d s5 = _mm512_shuffle_f64x2(t5, t7, 0x88);
-  __m512d s6 = _mm512_shuffle_f64x2(t4, t6, 0xDD);
-  __m512d s7 = _mm512_shuffle_f64x2(t5, t7, 0xDD);
-
-  // 3) Final 8x8 assembly by shuffling 128-bit lanes between the 4x4 blocks
-  (r0) = _mm512_shuffle_f64x2(s0, s4, 0x88);
-  (r1) = _mm512_shuffle_f64x2(s1, s5, 0x88);
-  (r2) = _mm512_shuffle_f64x2(s2, s6, 0x88);
-  (r3) = _mm512_shuffle_f64x2(s3, s7, 0x88);
-  (r4) = _mm512_shuffle_f64x2(s0, s4, 0xDD);
-  (r5) = _mm512_shuffle_f64x2(s1, s5, 0xDD);
-  (r6) = _mm512_shuffle_f64x2(s2, s6, 0xDD);
-  (r7) = _mm512_shuffle_f64x2(s3, s7, 0xDD);
-}
-
-template <> inline void Transpose<float,16>(sctl::Vec<float,16> (&v)[16]) noexcept {
-  auto& r0 = v[0].get().v;
-  auto& r1 = v[1].get().v;
-  auto& r2 = v[2].get().v;
-  auto& r3 = v[3].get().v;
-  auto& r4 = v[4].get().v;
-  auto& r5 = v[5].get().v;
-  auto& r6 = v[6].get().v;
-  auto& r7 = v[7].get().v;
-  auto& r8 = v[8].get().v;
-  auto& r9 = v[9].get().v;
-  auto& r10= v[10].get().v;
-  auto& r11= v[11].get().v;
-  auto& r12= v[12].get().v;
-  auto& r13= v[13].get().v;
-  auto& r14= v[14].get().v;
-  auto& r15= v[15].get().v;
-
-  // Stage 1: interleave 32-bit elements (within 128-bit lanes)
-  __m512 t0  = _mm512_unpacklo_ps(r0 , r1 );  __m512 t1  = _mm512_unpackhi_ps(r0 , r1 );
-  __m512 t2  = _mm512_unpacklo_ps(r2 , r3 );  __m512 t3  = _mm512_unpackhi_ps(r2 , r3 );
-  __m512 t4  = _mm512_unpacklo_ps(r4 , r5 );  __m512 t5  = _mm512_unpackhi_ps(r4 , r5 );
-  __m512 t6  = _mm512_unpacklo_ps(r6 , r7 );  __m512 t7  = _mm512_unpackhi_ps(r6 , r7 );
-  __m512 t8  = _mm512_unpacklo_ps(r8 , r9 );  __m512 t9  = _mm512_unpackhi_ps(r8 , r9 );
-  __m512 t10 = _mm512_unpacklo_ps(r10, r11);  __m512 t11 = _mm512_unpackhi_ps(r10, r11);
-  __m512 t12 = _mm512_unpacklo_ps(r12, r13);  __m512 t13 = _mm512_unpackhi_ps(r12, r13);
-  __m512 t14 = _mm512_unpacklo_ps(r14, r15);  __m512 t15 = _mm512_unpackhi_ps(r14, r15);
-
-  // Stage 2: gather 2-wide groups into 4-wide (still within 128-bit lanes)
-  // imm 0x44 = [a0,a1, b0,b1]; imm 0xEE = [a2,a3, b2,b3]
-  __m512 s0  = _mm512_shuffle_ps(t0 , t2 , 0x44);  __m512 s1  = _mm512_shuffle_ps(t0 , t2 , 0xEE);
-  __m512 s2  = _mm512_shuffle_ps(t1 , t3 , 0x44);  __m512 s3  = _mm512_shuffle_ps(t1 , t3 , 0xEE);
-  __m512 s4  = _mm512_shuffle_ps(t4 , t6 , 0x44);  __m512 s5  = _mm512_shuffle_ps(t4 , t6 , 0xEE);
-  __m512 s6  = _mm512_shuffle_ps(t5 , t7 , 0x44);  __m512 s7  = _mm512_shuffle_ps(t5 , t7 , 0xEE);
-  __m512 s8  = _mm512_shuffle_ps(t8 , t10, 0x44);  __m512 s9  = _mm512_shuffle_ps(t8 , t10, 0xEE);
-  __m512 s10 = _mm512_shuffle_ps(t9 , t11, 0x44);  __m512 s11 = _mm512_shuffle_ps(t9 , t11, 0xEE);
-  __m512 s12 = _mm512_shuffle_ps(t12, t14, 0x44);  __m512 s13 = _mm512_shuffle_ps(t12, t14, 0xEE);
-  __m512 s14 = _mm512_shuffle_ps(t13, t15, 0x44);  __m512 s15 = _mm512_shuffle_ps(t13, t15, 0xEE);
-
-  // Stage 3: move 128-bit lanes across the 512-bit vectors
-  // imm 0x88 = [a0,a1, b0,b1] (low halves), 0xDD = [a2,a3, b2,b3] (high halves)
-  __m512 u0  = _mm512_shuffle_f32x4(s0 , s4 , 0x88);
-  __m512 u1  = _mm512_shuffle_f32x4(s1 , s5 , 0x88);
-  __m512 u2  = _mm512_shuffle_f32x4(s2 , s6 , 0x88);
-  __m512 u3  = _mm512_shuffle_f32x4(s3 , s7 , 0x88);
-  __m512 u4  = _mm512_shuffle_f32x4(s0 , s4 , 0xDD);
-  __m512 u5  = _mm512_shuffle_f32x4(s1 , s5 , 0xDD);
-  __m512 u6  = _mm512_shuffle_f32x4(s2 , s6 , 0xDD);
-  __m512 u7  = _mm512_shuffle_f32x4(s3 , s7 , 0xDD);
-
-  __m512 u8  = _mm512_shuffle_f32x4(s8 , s12, 0x88);
-  __m512 u9  = _mm512_shuffle_f32x4(s9 , s13, 0x88);
-  __m512 u10 = _mm512_shuffle_f32x4(s10, s14, 0x88);
-  __m512 u11 = _mm512_shuffle_f32x4(s11, s15, 0x88);
-  __m512 u12 = _mm512_shuffle_f32x4(s8 , s12, 0xDD);
-  __m512 u13 = _mm512_shuffle_f32x4(s9 , s13, 0xDD);
-  __m512 u14 = _mm512_shuffle_f32x4(s10, s14, 0xDD);
-  __m512 u15 = _mm512_shuffle_f32x4(s11, s15, 0xDD);
-
-  // Final combine: produce the 16 transposed rows
-  r0  = _mm512_shuffle_f32x4(u0 , u8 , 0x88);
-  r1  = _mm512_shuffle_f32x4(u1 , u9 , 0x88);
-  r2  = _mm512_shuffle_f32x4(u2 , u10, 0x88);
-  r3  = _mm512_shuffle_f32x4(u3 , u11, 0x88);
-  r4  = _mm512_shuffle_f32x4(u4 , u12, 0x88);
-  r5  = _mm512_shuffle_f32x4(u5 , u13, 0x88);
-  r6  = _mm512_shuffle_f32x4(u6 , u14, 0x88);
-  r7  = _mm512_shuffle_f32x4(u7 , u15, 0x88);
-
-  r8  = _mm512_shuffle_f32x4(u0 , u8 , 0xDD);
-  r9  = _mm512_shuffle_f32x4(u1 , u9 , 0xDD);
-  r10 = _mm512_shuffle_f32x4(u2 , u10, 0xDD);
-  r11 = _mm512_shuffle_f32x4(u3 , u11, 0xDD);
-  r12 = _mm512_shuffle_f32x4(u4 , u12, 0xDD);
-  r13 = _mm512_shuffle_f32x4(u5 , u13, 0xDD);
-  r14 = _mm512_shuffle_f32x4(u6 , u14, 0xDD);
-  r15 = _mm512_shuffle_f32x4(u7 , u15, 0xDD);
-}
-#endif
-
-template <class Real, unsigned int N> void test_transpose() {
-  sctl::Vec<Real,N> v[N];
-  for (unsigned int i = 0; i < N; i++) {
-    for (unsigned int j = 0; j < N; j++) {
-      v[i].get().v[j] = i*N + j + 1;
-    }
-  }
-  Transpose<Real,N>(v);
-  for (unsigned int i = 0; i < N; i++) {
-    for (unsigned int j = 0; j < N; j++) {
-      if (v[i].get().v[j] != j*N + i + 1) {
-        std::cout << "Transpose<" << typeid(Real).name() << "," << N << "> failed at ("
-                  << i << "," << j << "): " << v[i].get().v[j] << " != " << j*N + i + 1 << std::endl;
-        std::exit(1);
-        return;
-      }
-    }
-  }
-}
-
 template <class Real, unsigned int order = 4>
 class FGT_Coeffs {
   static_assert(order >= 1 && order <= 15, "order must be in [1,15]");
@@ -1345,7 +1101,7 @@ void FGT<Real,order>::fgt1d_vec_stride1(sctl::Vector<Real>& u, const sctl::Vecto
         uu[k] = VecType::Zero();
         aa[k] = VecType::Load((alpha_ + j) + nx * k);
       }
-      Transpose<Real, VecLen>(aa);
+      sctl::transpose(aa);
 
       for (unsigned int l = 0; l < VecLen; l++) {
         for (unsigned int k = 0; k < order; k++) {
@@ -1356,7 +1112,7 @@ void FGT<Real,order>::fgt1d_vec_stride1(sctl::Vector<Real>& u, const sctl::Vecto
         }
       }
 
-      Transpose<Real, VecLen>(uu);
+      sctl::transpose(uu);
       for (unsigned int k = 0; k < VecLen; k++) uu[k].Store((u_ + j) + nx * k);
     }
     { // j = nx0,...,nx-1
@@ -1419,7 +1175,7 @@ void FGT<Real,order>::fgt1d_vec_stride1(sctl::Vector<Real>& u, const sctl::Vecto
         u0[k] = VecType::Load((u_     + j) + nx * k);
         aa[k] = VecType::Load((alpha_ + j) + nx * k);
       }
-      Transpose<Real, VecLen>(aa);
+      sctl::transpose(aa);
 
       for (int l = VecLen - 1; l >= 0; l--) {
         for (unsigned int k = 0; k < order; k++) {
@@ -1430,7 +1186,7 @@ void FGT<Real,order>::fgt1d_vec_stride1(sctl::Vector<Real>& u, const sctl::Vecto
         }
       }
 
-      Transpose<Real, VecLen>(uu);
+      sctl::transpose(uu);
       for (unsigned int k = 0; k < VecLen; k++) (u0[k] + uu[k]).Store((u_ + j) + nx * k);
     }
   }
@@ -1482,7 +1238,7 @@ void FGT<Real,order>::fgt1d_vec_stride1_(sctl::Vector<Real>& u, const sctl::Vect
           sum[j_] += hr[k] * wr[k] - hi[k] * wi[k];
         }
       }
-      Transpose<Real,VecLen>(sum);
+      sctl::transpose(sum);
       for (unsigned int k = 1; k < VecLen; ++k) sum[0] += sum[k];
       sum[0].Store(u0 + j);
     }
@@ -1498,7 +1254,7 @@ void FGT<Real,order>::fgt1d_vec_stride1_(sctl::Vector<Real>& u, const sctl::Vect
           sum[j_] += hr[k] * wr[k] - hi[k] * wi[k];
         }
       }
-      Transpose<Real,VecLen>(sum);
+      sctl::transpose(sum);
       for (unsigned int k = 1; k < VecLen; ++k) sum[0] += sum[k];
 
       Real buf[VecLen];
@@ -1520,7 +1276,7 @@ void FGT<Real,order>::fgt1d_vec_stride1_(sctl::Vector<Real>& u, const sctl::Vect
           hi[k] = hrp * zi[k] + hir * zr[k];
         }
       }
-      Transpose<Real,VecLen>(sum);
+      sctl::transpose(sum);
       for (unsigned int k = 1; k < VecLen; ++k) sum[0] += sum[k];
 
       Real buf[VecLen];
@@ -1539,7 +1295,7 @@ void FGT<Real,order>::fgt1d_vec_stride1_(sctl::Vector<Real>& u, const sctl::Vect
           hi[k] = hrp * zi[k] + hir * zr[k];
         }
       }
-      Transpose<Real,VecLen>(sum);
+      sctl::transpose(sum);
       for (unsigned int k = 1; k < VecLen; ++k) sum[0] += sum[k];
       (sum[0] + uu).Store(u0 + j);
     }

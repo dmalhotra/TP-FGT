@@ -20,22 +20,6 @@
 #endif
 
 /*
- * This is done using only SIMD operations and no extra memory allocation.
- * Transpose a square matrix of SIMD vectors in place.
- *
- * @tparam Real   Floating point type (float or double).
- * @tparam VecLen Number of elements in each SIMD vector.
- *
- * @param[in,out] v Array of VecLen SIMD vectors, each of length VecLen.
- */
-template <class Real, unsigned int VecLen>
-inline void Transpose(sctl::Vec<Real,VecLen> (&v)[VecLen]) noexcept;
-
-// Test function for Transpose
-template <class Real, unsigned int N>
-void test_transpose();
-
-/*
  * Tensor product Fast Gaussian Transform (FGT) in 1D, 2D, and 3D using sum of exponentials approximation.
  *
  * @tparam Real  Floating point type (float or double).
