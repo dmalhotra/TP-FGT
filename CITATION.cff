@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+message: "If you use TP-FGT, please cite it as below."
+type: software
+title: "TP-FGT: Tensor Product Fast Gauss Transform"
+authors:
+  - given-names: Dhairya
+    family-names: Malhotra
+  - given-names: Shidong
+    family-names: Jiang
+  - given-names: Leslie
+    family-names: Greengard
+abstract: "A high-performance implementation of the tensor-product fast Gauss transform (FGT) in 1D, 2D and 3D using a sum-of-exponentials approximation with SIMD vectorization."
+repository-code: "https://github.com/dmalhotra/TP-FGT"
+license: Apache-2.0
+references:
+  - type: article
+    title: "Approximating the Gaussian as a Sum of Exponentials and Its Applications to the Fast Gauss Transform"
+    authors:
+      - given-names: Shidong
+        family-names: Jiang
+      - given-names: Leslie
+        family-names: Greengard
+    journal: "Communications in Computational Physics"
+    publisher:
+      name: "Global Science Press"
+    volume: 31
+    issue: 1
+    start: 1
+    end: 26
+    year: 2021
+    doi: "10.4208/cicp.oa-2021-0031"
+    notes: "TP-FGT applies the sum-of-exponentials approximation of the Gaussian and the one-dimensional forward and backward recurrences of this paper along each dimension of a tensor-product grid."
+  - type: software
+    title: "SCTL: Scientific Computing Template Library"
+    authors:
+      - given-names: Dhairya
+        family-names: Malhotra
+      - given-names: Tianyue
+        family-names: Li
+      - given-names: Robert
+        family-names: Blackwell
+      - given-names: Wen
+        family-names: Yan
+      - given-names: Xuanzhao
+        family-names: Gao
+    repository-code: "https://github.com/dmalhotra/SCTL"
+    url: "https://sctl.readthedocs.io"
+    license: Apache-2.0
+    notes: "TP-FGT uses SCTL's SIMD vectors, transpose, Vector and profiling (extern/SCTL submodule)."
